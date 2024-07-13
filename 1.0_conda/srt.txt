@@ -1,0 +1,35 @@
+# 视频字幕
+
+[uv_break]大家好，[uv_break]随着AI技术的不断发展[uv_break]和开源技术的不断涌现，我们可以基于开源技术搭建一套自己的"贾维斯"，主要用到语音唤醒、语音识别、大模型、语音生成文字这些技术。
+[uv_break][uv_break]总共分为六个部分来实现。[uv_break]今天主要来说关于开发环境的问题，使用conda来进行python环境的管理。
+[uv_break][uv_break]首先，如果您熟悉conda，那么可以关闭视频了。如果对于开发比较感兴趣，有相应的基础，那么可以继续看下去。
+[uv_break][uv_break]做开发，那么这个阶段必会的版本管理工具，git，必须要熟悉掌握，最好还要有科学上网的能力，因为github网站在国内访问时，时常抽风。
+[uv_break][uv_break]huggingface已经被ban掉了。不过，它们都有国内的代理，实在不行，就使用国内代理服务。
+[uv_break][uv_break]conda是目前最常用的python的包管理器，推荐使用开源版本miniforge，可以从官方github下载或者从国内的镜像源，如清华源上下载。
+[uv_break][uv_break]安装的时候，要注意，目前使用英文，不要有空格或其它特殊字符，最好安装在非系统盘。安装的时候，按下一步进行安装，修改安装目录，其它可以保留默认。
+[uv_break][uv_break]完装完成后，python环境的安装目录默认为当前登录用户目录下，可以通过命令查看。修改时，可以通过conda config命令进行修改默认的安装目录。
+[uv_break][uv_break]下面是安装过程：
+[uv_break][uv_break]这里修改安装目录。
+[uv_break][uv_break]这里可以勾选第2个，如果没有其它的conda命令冲突。
+[uv_break][uv_break]安装完成后，启动命令行，如果执行conda，提示找不到命令，可以从开始菜单找到conda prompt，打开conda的命令行，
+[uv_break][uv_break]也可以把conda加入环境变量中，通过执行condabin目录下的 conda.bat init命令来完成命令行的初始化。执行成功后，重新启动命令行就可以使用了。
+[uv_break][uv_break]使用conda create 命令创建新的python环境，指定python版本为3.10。
+[uv_break][uv_break]使用conda remove命令可以删除python环境。
+[uv_break][uv_break]如果需要修改python环境的安装目录，使用conda config命令，指令新的目录为envs的默认目录。
+[uv_break][uv_break]我们可以看到配置参数已经修改了。这个时候，我们再使用conda create创建环境，就会在我们指定的新目录中，下载python的包。
+[uv_break][uv_break]我们使用conda env list可以查看当前系统安装的python环境。
+[uv_break][uv_break]conda的常用命令不多，我们主要记住这6个就可以，多使用几次，像conda env list, conda create,  conda activate。
+[uv_break][uv_break]尽量不使用conda install安装相应的包，而是使用conda activate激活相应的环境后，使用pip install进行安装。
+
+
+大家好，随着AI技术的不断发展[uv_break]和开源技术的不断涌现，我们可以基于开源技术搭建一套自己的"贾维斯"，主要用到语音唤醒、语音识别、大模型、语音生成文字这些技术。
+[uv_break][uv_break]总共分为六个部分来实现。[uv_break]今天主要来说关于开发环境的问题，使用conda来进行python环境的管理。[uv_break][uv_break]首先，如果您熟悉conda，那么可以关闭视频了。如果对于开发比较感兴趣，有相应的基础，那么可以继续看下去。
+[uv_break][uv_break]做开发，那么这个阶段必会的版本管理工具，git，必须要熟悉掌握，最好还要有科学上网的能力，因为github网站在国内访问时，时常抽风。[uv_break][uv_break]huggingface已经被ban掉了。不过，它们都有国内的代理，实在不行，就使用国内代理服务。
+[uv_break][uv_break]conda是目前最常用的python的包管理器，推荐使用开源版本miniforge，可以从官方github下载或者从国内的镜像源，如清华源上下载。
+[uv_break][uv_break]安装的时候，要注意，目录使用英文，不要有空格或其它特殊字符，最好安装在非系统盘。安装的时候，按下一步进行安装，修改安装目录，其它可以保留默认。
+[uv_break][uv_break]完装完成后，python环境的安装目录默认为当前登录用户目录下，可以通过命令查看。修改时，可以通过conda config命令进行修改默认的安装目录。[uv_break][uv_break]下面是安装过程：[uv_break][uv_break]这里修改安装目录。
+[uv_break][uv_break]这里可以勾选第2个，如果没有其它的conda命令冲突。[uv_break][uv_break]安装完成后，启动命令行，如果执行conda，提示找不到命令，可以从开始菜单找到conda prompt，打开conda的命令行，
+[uv_break][uv_break]也可以把conda加入环境变量中，通过执行condabin目录下的 conda.bat init命令来完成命令行的初始化。执行成功后，重新启动命令行就可以使用了。[uv_break][uv_break]使用conda create 命令创建新的python环境，指定python版本为3.10。
+[uv_break][uv_break]使用conda remove命令可以删除python环境。[uv_break][uv_break]如果需要修改python环境的安装目录，使用conda config命令，指令新的目录为envs的默认目录。
+[uv_break][uv_break]我们可以看到配置参数已经修改了。这个时候，我们再使用conda create创建环境，就会在我们指定的新目录中，下载python的包。[uv_break][uv_break]我们使用conda env list可以查看当前系统安装的python环境。
+[uv_break][uv_break]conda的常用命令不多，我们主要记住这6个就可以，多使用几次
