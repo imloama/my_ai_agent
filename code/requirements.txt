@@ -2,3 +2,5 @@ ollama
 fastasr
 fastapi
 webrtcvad
+pypinyin
+numpy
