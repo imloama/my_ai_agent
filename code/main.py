@@ -6,14 +6,21 @@
 # tts使用fish speech
 import threading
 import asyncio
+import funasr.auto
 import webrtcvad
 import pyaudio
 import funasr
+from funasr.utils.postprocess_utils import rich_transcription_postprocess
 import soundfile
 import time
 import sherpa_onnx
 import webrtcvad
 import numpy as np
+from ollama import AsyncClient
+
+
+ollama_host = 'http://localhost:11434'
+ollama_model='qwen2:1.5b'
 
 # 音频数据队列
 audio_queue_asr = asyncio.Queue() # ASR识别队列
@@ -21,15 +28,19 @@ audio_queue_kws = asyncio.Queue() # 唤醒识别队列
 # 监听状态 0表示未唤醒 1表示已唤醒， -1表示停止
 status = 0
 keyword_spotter:sherpa_onnx.KeywordSpotter = None
-
+is_listening = True
+is_chatting = False
+last_kws_active_at = -1 #上次唤醒时的时间
 
 vad:webrtcvad.Vad = webrtcvad.Vad(3)
+asr_model:funasr.AutoModel = None
 
 # 监听麦克风，将数据保存到audio_queue
 def listen_microphone():
     global audio_queue_asr
     global status
     global vad
+    global is_listening
     audio = pyaudio.PyAudio()
     chunk = 320 #4800 #3200 #1024  int(RATE * 0.2)  # 每次读取200毫秒的数据
     format = pyaudio.paInt16
@@ -38,10 +49,15 @@ def listen_microphone():
     while True:
         if status < 0:
             break
+        if not is_listening:
+            frames = b''
+            time.sleep(0.1)
+            continue
         data = stream.read(chunk)
         if status==0:
             audio_queue_kws.put_nowait(data)
             continue
+       
         # TODO 判断是否为人声，不是人声直接抛弃 
         if vad.is_speech(data, 16000):
             frames += data
@@ -67,6 +83,42 @@ def kws_init():
         provider='cpu',
     )
     # stream = keyword_spotter.create_stream()
+
+async def on_kws_result(cmd=None):
+    global status
+    global is_listening
+    global audio_queue_asr
+    global last_kws_active_at
+    last_kws_active_at = time.time()
+    status = 1
+    is_listening = False
+    while not audio_queue_asr.empty():
+        audio_queue_asr.get_nowait()
+    # TODO 播放声音
+    await asyncio.sleep(2)
+    is_listening = True
+    
+async def on_asr_result(result):
+    global status
+    global is_listening
+    global is_chatting
+    global last_kws_active_at
+    last_kws_active_at = time.time()
+    is_listening = False
+    # TODO 请求ollama，得到回答
+    is_chatting = True
+    resp = await chat_by_ollama(result)
+    # tts
+    
+    #TODO 恢复
+    is_listening = True
+
+async def chat_by_ollama(question):
+    message = {'role': 'user', 'content': question}
+    response = await AsyncClient(host=ollama_host).chat(model=ollama_model, messages=[message])
+    print(response)
+    return response["message"]["content"]
+
 async def do_kws():
     global keyword_spotter
     stream = keyword_spotter.create_stream()
@@ -89,66 +141,80 @@ async def do_kws():
         if result == None or result == '':
             return
         # TODO 唤醒结果
+        await on_kws_result(result)
 
 # 从队列获取音频数据，执行ASR或唤醒处理
 async def do_asr():
     global audio_queue_asr
     global status
-    #webrtc_vad_model = webrtcvad.Vad()
-    #webrtc_vad_model.set_mode(3) # 0: 高度不敏感（最少误报，但可能漏掉一些语音）1: 不太敏感2: 中等敏感  3: 高度敏感（最多误报，但最少漏掉语音）
-    vad_model = funasr.AutoModel(model="../models/speech_fsmn_vad_zh-cn-16k-common-pytorch")
-    frames = b''
-    cache = {}
-    is_final = False
+    global asr_model
+    asr_model = funasr.AutoModel(model= "iic/SenseVoiceSmall",
+                                 trust_remote_code=True,
+    remote_code="./model.py",
+    #vad_model="fsmn-vad",
+    #vad_kwargs={"max_single_segment_time": 30000},
+    #device="cpu"#"cuda:0",
+    )
+    
     while True:
-        if status != 1:
-            break
-        print("==============1============")
         if audio_queue_asr.empty():
             await asyncio.sleep(0.2)
             continue
         data = await audio_queue_asr.get()
-        # frames = frames + data
-        # vad判断是否结束
-        #webrtc_vad_model.is_speech()
-        res = vad_model.generate(input=data, cache=cache, is_final=is_final, chunk_size=320)
-        # if len(res[0]["value"]):
-            # print(res)
-        values = res[0]["value"]
-        if len(values)  == 0:
-            continue
-        value = values[len(values)-1]
-        end_value = value[1]
-        if end_value < 0:
-            # 还有数据
-            frames = frames + data
-        else:
-            #todo 判断是否进行唤醒，还是进行语音识别
-            # https://github.com/k2-fsa/sherpa-onnx/blob/master/go-api-examples/vad-asr-paraformer/main.go
-            # kws https://k2-fsa.github.io/sherpa/onnx/kws/pretrained_models/index.html
-            # kws https://github.com/k2-fsa/icefall/pull/1428
-            
-            frames = b''
-            cache = {}
-            
+        res = asr_model.generate(
+            input=data,
+            cache={},
+            language="auto",  # "zn", "en", "yue", "ja", "ko", "nospeech"
+            use_itn=True,
+            batch_size_s=60,
+            merge_vad=True,  #
+            merge_length_s=15,
+        )
         print(res)
-        # [{'key': 'rand_key_BkaYjKcCiv7a8', 'value': [[-1, 46900]]}]
-        # [{'key': 'rand_key_UE68Q0QXqVNme', 'value': [[47310, -1]]}]
-        # [{'key': 'rand_key_DAlbDZqm8yewg', 'value': [[-1, 56460], [56740, -1]]}]
-        # 执行ASR，再执行获取拼音，判断是否为唤醒词
+        text = rich_transcription_postprocess(res[0]["text"])
+        print(text)
+        #todo 打印
+        await on_asr_result(text)
         
 
 def do_asr_sync():
     asyncio.run(do_asr())
+    
+def do_kws_sync():
+    asyncio.run(do_kws())
+    
+def do_kws_reset():
+    global last_kws_active_at
+    global status
+    while True:
+        if status == 0:
+            time.sleep(0.2)
+            continue
+        if time.time() - last_kws_active_at > 600:
+            status = 0
+            time.sleep(1)
+            continue
+        
 
 if __name__ == '__main__':
     status =  1
-    rec = threading.Thread(target=do_asr_sync)
-    rec.daemon = True
-    rec.start()
+    thread_asr = threading.Thread(target=do_asr_sync)
+    thread_asr.daemon = True
+    thread_asr.start()
     
-    # listen_microphone()
+    thread_kws = threading.Thread(target=do_kws_sync)
+    thread_kws.daemon = True
+    thread_kws.start()
     
+    thread_reset_kws = threading.Thread(target=do_kws_reset)
+    thread_reset_kws.daemon = True
+    thread_reset_kws.start()
+    
+    
+    
+    listen_microphone()
+    
+    '''
     chunk_size = 320 # ms
     wav_file = f"../models/speech_fsmn_vad_zh-cn-16k-common-pytorch/example/vad_example.wav"
     speech, sample_rate = soundfile.read(wav_file)
@@ -164,3 +230,4 @@ if __name__ == '__main__':
         audio_queue_asr.put_nowait(speech_chunk) 
     
     time.sleep(10)
+    '''
