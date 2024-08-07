@@ -17,10 +17,13 @@ import sherpa_onnx
 import webrtcvad
 import numpy as np
 from ollama import AsyncClient
-
+import edge_tts
+from pydub import AudioSegment
+from pydub.playback import play
 
 ollama_host = 'http://localhost:11434'
 ollama_model='qwen2:1.5b'
+edge_tts_voice = "zh-CN-XiaoxiaoNeural"
 
 # 音频数据队列
 audio_queue_asr = asyncio.Queue() # ASR识别队列
@@ -94,8 +97,8 @@ async def on_kws_result(cmd=None):
     is_listening = False
     while not audio_queue_asr.empty():
         audio_queue_asr.get_nowait()
-    # TODO 播放声音
-    await asyncio.sleep(2)
+    audio = AudioSegment.from_mp3("./kws.mp3")
+    play(audio)
     is_listening = True
     
 async def on_asr_result(result):
@@ -109,7 +112,12 @@ async def on_asr_result(result):
     is_chatting = True
     resp = await chat_by_ollama(result)
     # tts
-    
+    communicate = edge_tts.Communicate(resp, edge_tts_voice)
+    file_name = "./demo.mp3"
+    await communicate.save(file_name)
+    # play
+    audio = AudioSegment.from_mp3(file_name)
+    play(audio)
     #TODO 恢复
     is_listening = True
 
