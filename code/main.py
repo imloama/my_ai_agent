@@ -163,7 +163,7 @@ async def do_asr():
     #vad_kwargs={"max_single_segment_time": 30000},
     #device="cpu"#"cuda:0",
     )
-    
+
     while True:
         if audio_queue_asr.empty():
             await asyncio.sleep(0.2)
@@ -179,6 +179,8 @@ async def do_asr():
             merge_length_s=15,
         )
         print(res)
+        #text = res[0]["text"]
+        
         text = rich_transcription_postprocess(res[0]["text"])
         print(text)
         #todo 打印
@@ -205,6 +207,9 @@ def do_kws_reset():
         
 
 if __name__ == '__main__':
+    
+    kws_init()
+    
     status =  1
     thread_asr = threading.Thread(target=do_asr_sync)
     thread_asr.daemon = True

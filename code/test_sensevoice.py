@@ -1,5 +1,5 @@
 import funasr
-# from funasr.utils.postprocess_utils import rich_transcription_postprocess
+from funasr.utils.postprocess_utils import rich_transcription_postprocess
 
 model = funasr.AutoModel(
     model= "iic/SenseVoiceSmall",
@@ -19,3 +19,5 @@ res = model.generate(
 
 print("===============")
 print(res)
+text = rich_transcription_postprocess(res[0]["text"])
+print(text)
